@@ -14,9 +14,12 @@
 const char* ssid = "DukeOpen";
 const char* password = "";
 WebServer server(80);
-//variables to hold data
-String mondayTimes[10];
-int mondayCount = 0;
+
+//variables to hold user input data
+String dayTimes[7][10];
+int dayCount[7] = {0};                     // number of entries per day
+const char* dayKeys[7] = {"sun","mon","tue","wed","thu","fri","sat"};
+
 //put the HTML
 const char index_html[] PROGMEM = R"rawliteral(<!doctype html>
 <html lang="en">
@@ -240,27 +243,37 @@ void handleSchedule() {
     server.send(400, "text/plain", "no body");
     return;
   }
+
   String json = server.arg("plain");
   Serial.println("Received JSON:");
   Serial.println(json);
 
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<2048> doc;
   DeserializationError err = deserializeJson(doc, json);
   if (err) {
     server.send(400, "text/plain", "bad json");
+    Serial.println("JSON parse error!");
     return;
   }
 
-  // Example: extract Monday’s list of times
-  JsonArray mon = doc["mon"].as<JsonArray>();
-  mondayCount = 0;
-  for (const char* t : mon) {
-    if (mondayCount < 10) mondayTimes[mondayCount++] = String(t);
+  // loop through all days
+  for (int d = 0; d < 7; d++) {
+    JsonArray arr = doc[dayKeys[d]].as<JsonArray>();
+    dayCount[d] = 0;
+    for (const char* t : arr) {
+      if (dayCount[d] < 10) {
+        dayTimes[d][dayCount[d]++] = String(t);
+      }
+    }
   }
-
-  Serial.println("Monday times:");
-  for (int i = 0; i < mondayCount; i++) {
-    Serial.println(mondayTimes[i]);
+  // print what we parsed
+  for (int d = 0; d < 7; d++) {
+    Serial.print(dayKeys[d]);
+    Serial.println(":");
+    for (int i = 0; i < dayCount[d]; i++) {
+      Serial.print("  ");
+      Serial.println(dayTimes[d][i]);
+    }
   }
 
   server.send(200, "text/plain", "Saved");
