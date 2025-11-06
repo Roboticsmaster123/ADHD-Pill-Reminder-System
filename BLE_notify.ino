@@ -10,9 +10,16 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <ArduinoJson.h>
+#include "time.h"
 
-const char* ssid = "DukeOpen";
+const char* ssid = "DukeVisitor";
 const char* password = "";
+
+const char* ntpServer1 = "time.google.com";
+const char* ntpServer2 = "time.nist.gov";
+
+const char* tzString = "EST5EDT,M3.2.0/2,M11.1.0/2";
+
 WebServer server(80);
 
 //variables to hold user input data
@@ -283,6 +290,22 @@ void handleSchedule() {
   server.send(200, "text/plain", "OK");
 }
 
+void handleScheduleGet() {
+  StaticJsonDocument<1024> doc;
+
+  // Example: send back whatever you saved earlier
+  for (int d = 0; d < 7; d++) {
+    JsonArray arr = doc[dayKeys[d]].to<JsonArray>();
+    for (int i = 0; i < dayCount[d]; i++) {
+      arr.add(dayTimes[d][i]);
+    }
+  }
+
+  String out;
+  serializeJson(doc, out);
+  server.send(200, "application/json", out);
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -348,8 +371,23 @@ void setup() {
   // Register HTTP routes
   server.on("/", handleRoot);
   server.on("/api/schedule", HTTP_POST, handleSchedule);
+  server.on("/api/schedule", HTTP_GET, handleScheduleGet);    // "Load" button
   server.begin();
   Serial.println("HTTP server started");
+
+  //Set local time zone: EST
+  configTime(0, 0, ntpServer1, ntpServer2);   // start NTP client
+  setenv("TZ", tzString, 1);                 // set time‑zone string
+  tzset();
+
+  struct tm timeinfo;
+
+  if (getLocalTime(&timeinfo)) {
+    Serial.println("Got NTP time:");
+    Serial.println(&timeinfo, "%Y-%m-%d %H:%M:%S %Z%z");
+  } else {
+    Serial.println("Failed to get time");
+  }
   }
 
 void loop() {
