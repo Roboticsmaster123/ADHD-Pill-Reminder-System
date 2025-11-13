@@ -161,15 +161,26 @@ void loop() {
   // If we are connected to a peer BLE Server, update the characteristic each time we are reached
   // with the current time since boot.
   if (connected) {
-    String rxValue = pRemoteChar_2->readValue();
+
+    String value = pRemoteChar_1->readValue();
+    int intValue = value.toInt();
+    Serial.print("Alarm value: ");
+    Serial.println(intValue);
+
+    if(intValue == 1) {
+      //add code for vibrations
+
+    }
+
+    /*String rxValue = pRemoteChar_2->readValue();
     Serial.print("Characteristic 2 (readValue): ");
-    Serial.println(rxValue.c_str());
+    Serial.println(rxValue.c_str());*/
     
-    String txValue = "String with random value from client: " + String(-random(1000));
-    Serial.println("Characteristic 2 (writeValue): " + txValue);
+    //String txValue = "String with random value from client: " + String(-random(1000));
+    //Serial.println("Characteristic 2 (writeValue): " + txValue);
     
     // Set the characteristic's value to be the array of bytes that is actually a string.
-    pRemoteChar_2->writeValue(txValue.c_str(), txValue.length());
+    //pRemoteChar_2->writeValue(txValue.c_str(), txValue.length());
     
   }else if(doScan){
     BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
