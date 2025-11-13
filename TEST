@@ -1,0 +1,85 @@
+#include <SPI.h>
+#include <MFRC522.h>
+#include <Adafruit_NeoPixel.h>
+
+#define LED_PIN     4
+#define LED_COUNT   7
+#define SS_PIN      5
+#define RST_PIN     13
+#define BUZZER_PIN  26
+
+MFRC522 rfid(SS_PIN, RST_PIN);
+Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+bool alarmActive = true;  // start armed
+
+void setup() {
+  Serial.begin(9600);
+  SPI.begin();
+  rfid.PCD_Init();
+
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  ring.begin();
+  ring.setBrightness(10);
+  ring.clear();
+  ring.show();
+
+  Serial.println("Alarm system armed! Scan an NFC tag to deactivate.");
+}
+
+void loop() {
+  // --- Alarm ACTIVE: buzzer and flashing lights ---
+  if (alarmActive) {
+    // Flash LEDs red and beep
+    for (int i = 0; i < LED_COUNT; i++) {
+      ring.setPixelColor(i, ring.Color(255, 0, 0));  // red
+    }
+    ring.show();
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(200);
+
+    ring.clear();
+    ring.show();
+    digitalWrite(BUZZER_PIN, LOW);
+    delay(200);
+  }
+
+  // --- Check for NFC tag ---
+  if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
+
+    // Print the UID of the card
+    Serial.print("Card UID:");
+    for (byte i = 0; i < rfid.uid.size; i++) {
+      Serial.print(rfid.uid.uidByte[i] < 0x10 ? " 0" : " ");
+      Serial.print(rfid.uid.uidByte[i], HEX);
+    }
+    Serial.println();
+
+    // Deactivate the alarm
+    Serial.println("NFC tag detected -> Alarm deactivated!");
+    alarmActive = false;
+
+    // Stop buzzer & lights
+    digitalWrite(BUZZER_PIN, LOW);
+    ring.clear();
+    ring.show();
+
+    // Optional visual: show green for success
+    for (int i = 0; i < LED_COUNT; i++) {
+      ring.setPixelColor(i, ring.Color(0, 255, 0));
+    }
+    ring.show();
+    delay(1500);
+    ring.clear();
+    ring.show();
+
+    // Stop RF reading crypto
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
+  }
+
+  // Optional: If you want to "re‑arm" with a second scan, 
+  // you can toggle here instead of making alarmActive = false every time.
+}
